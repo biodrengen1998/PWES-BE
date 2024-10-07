@@ -1,68 +1,37 @@
-
+#%%
 import json
 import os
-import pandas as pd
+from multiprocessing import Pool
+
 import numpy as np
+import pandas as pd
 #display all columns
 pd.set_option('display.max_columns', None)
-
-import shutil
 
 from Bio.PDB import PDBParser
 p = PDBParser(QUIET=True)
 
+import shutil
+
+
 from scipy.spatial.distance import euclidean
 import scipy.cluster.hierarchy as sch
+
 
 from pwes.plotting.plotting import plot_PWES_fn, plot_elbow_fn
 from pwes.mapping.map_to_pymol import map_to_pymol
 
+
 class PWES_for_protein:
-    def __init__(self, pdb_name, pdb_path, chain="A", output_dir = "./figures", protein_name =None, output_suffix ='', data_path=None, data_sep = ",", input_df=None):
-        """
-        con
-        Constructor for the PWES_for_protein class
-        
-        args:
-        
-        pdb_name: str, name of the pdb file
-        pdb_path: str, path to the pdb file
-        chain: str, chain of the protein
-        output_dir: str, path to the output directory
-        protein_name: str, name of the protein
-        suffix: str, suffix for the output directory
-        data_path: str, path to the data file
-        data_sep: str, separator for the data file
-        input_df: pandas DataFrame, input data frame
-        
-        Called methods:
-        get_df: get the data frame from the data file
-        get_structure: get the structure of the protein
-        
-        """
-        
-        # define attributes relating to naming and pdb file
+    def __init__(self, pdb_name, pdb_path, data_path, output_dir="./figures", output_suffix = '', data_sep = ",", input_df=None):
+                # define attributes relating to naming and pdb file
         self.pdb_name = pdb_name
-        self.pdb_path = pdb_path
-        self.chain = chain
-        if protein_name is None:
-            self.protein_name = self.pdb_name
-        else:
-            self.protein_name = protein_name
+        self.pdb_path = pdb_path      
         
         self.suffix = output_suffix
         
-        if not self.pdb_path[-4:] == ".pdb":
-            self.pdb_location = f"{self.pdb_path}/{self.pdb_name}.pdb"
-        else:
-            self.pdb_location = self.pdb_path
-        try:
-            self.structure = self.get_structure()
-        except:
-            raise Exception("PDB file not found")
         
         
-        # handle the input data
         
         assert data_path is not None or input_df is not None, "Either data_path or input_df must be provided"
         
@@ -74,82 +43,102 @@ class PWES_for_protein:
         
             self.data_sep = data_sep
             self.df = self.get_df()
-            
-                
+        
+        protein_names = self.df["gene"].unique()
+        self.protein_name = "_".join(protein_names)
+        
+        
+        # except:
+        #     raise Exception("PDB file not found")
+        
+        if not self.pdb_path[-4:] == ".pdb":
+            self.pdb_location = f"{self.pdb_path}/{self.pdb_name}.pdb"
+        else:
+            self.pdb_location = self.pdb_path
+        try:
+            print(self.pdb_location)
+            self.structure = self.get_structure()
+        except:
+            raise Exception("PDB file not found")
         
         
         self.output_dir = os.path.join(output_dir, self.protein_name, self.suffix)
-        
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         
-        
-        
         self.PWES_array, self.dij_array, self.xij_array, self.df, self.linkage_matrix = self.calc_PWES_pwij()
-        
-
         
         self.dict_of_scores = {}
         
         
-    ############################################################################################################
+
 
 
     def get_structure(self):
         
-        
         p = PDBParser(QUIET=True)
         structure = p.get_structure(self.protein_name, self.pdb_location)
-
+        # copy structure to f"figures/{self.protein_name}/{self.treatment}/{self.pdb_name}/"
+        #shutil.copy(f"{self.pdb_path}/{self.pdb_name}.pdb", f"figures/{self.protein_name1}_{self.protein_name2}/{self.treatment}/{self.pdb_name}/")
         return structure
 
-    ############################################################################################################
 
     def get_df(self):
         df = pd.read_csv(self.data_path, sep=self.data_sep)
         return df
 
 
-    ############################################################################################################
-
     def calc_PWES_pwij(self):
         
-        
-        residues_in_pdb = self.structure[0][self.chain].get_residues()
-        # remove all het atoms
-        resnum_in_pdb = [res.get_id()[1] for res in residues_in_pdb if res.get_id()[0] == " "]
         df = self.df.copy()
         
+        #get unique "chain" values
+        chains = df["chain"].unique()
         
-    
+        collection_df = []
         
+        chain_dict = {}
         
+        for chain in chains:
+            
+            
+            df_chain = df[df["chain"] == chain]
+            df_chain = df_chain[df_chain["resnum"].str.len() >0]
+            gene = df_chain["gene"].unique()[0]
+            chain_dict[gene] = chain
+            # get residues in pdb
+            residues_in_pdb = self.structure[0][chain].get_residues()
+            
+            resnum_in_pdb = [res.get_id()[1] for res in residues_in_pdb if res.get_id()[0] == " "]
+            
+            df_chain["resnum"] = df_chain["resnum"].str.split(";")
+            
+            df_chain = df_chain[df_chain["resnum"].apply(lambda x: len(x) > 0)]
+            
+            # remove rows if any res_num is not in the pdb
+            
+            df_chain = df_chain[df_chain["resnum"].apply(lambda x: all([int(res_num) in resnum_in_pdb for res_num in x]))]
+            
+            # add to collection_df
+            collection_df.append(df_chain)
+            print(df_chain.shape)
+            
+        df = pd.concat(collection_df, ignore_index=True)
+        print(df.shape)
         
-        #remove rows where res_num = []
+        df = df.reset_index(drop=True)
         df["guide_idx"] = df.index
-        df["resnum"] = df["resnum"].str.split(";")
-        # remove rows if any res_num is empty
         
-        df = df[df["resnum"].str.len() >0]
-        
-        df = df.reset_index(drop=True)
-        
-        # remove rows if any res_num is not in the pdb
-        df = df[df["resnum"].apply(lambda x: all([int(res_num) in resnum_in_pdb for res_num in x]))]
-        df = df.reset_index(drop=True)
-        
-        df["gene"] = self.protein_name
-        df["chain"] = self.chain
-
         num_rows = df.shape[0]
-
+        #print(num_rows)
         xij_array = np.zeros((num_rows, num_rows))
         dij_array = np.zeros((num_rows, num_rows))
         PWES_array = np.zeros((num_rows, num_rows))
         for i, rowi in df.iterrows():
             guidei_atoms_coordinates = []
+            gene1 = rowi["gene"]
             for res_num in set(rowi["resnum"]):
-                    res = self.structure[0][self.chain][int(res_num)]
+                    res = self.structure[0][chain_dict[gene1]][int(res_num)]
                     for atom in res:
                         guidei_atoms_coordinates.append(atom.get_coord())
             
@@ -159,13 +148,13 @@ class PWES_for_protein:
             c1 = np.mean(guidei_atoms_coordinates, axis=0)
             c1 = c1.flatten()
             for j, rowj in df.iterrows():
-                
+                gene2 = rowj["gene"]
                 if i == j:
                     continue
                 
                 guidej_atoms_coordinates = []
                 for res_num in set(rowj["resnum"]):
-                    res = self.structure[0][self.chain][int(res_num)]
+                    res = self.structure[0][chain_dict[gene2]][int(res_num)]
                     for atom in res:
                         guidej_atoms_coordinates.append(atom.get_coord())
         
@@ -180,7 +169,7 @@ class PWES_for_protein:
                 try:
                     dij_array[i,j] = euclidean(c1, c2)
                 except:
-
+                    print(rowi["resnum"], rowj["resnum"], c1.shape, c2.shape, i, j, c1, c2)
                     break
                 # calculate the xij
                 xij_array[i,j] = rowi["log_fold_change"] + rowj["log_fold_change"]
@@ -197,13 +186,12 @@ class PWES_for_protein:
                 PWES_array[i, j] = pwij
         np.fill_diagonal(PWES_array, 0)
         
+        print(dij_array.shape, xij_array.shape, PWES_array.shape, df.shape)
+
         linkage_matrix = sch.linkage(PWES_array, method="ward", metric="euclidean")
         
-
         return PWES_array, dij_array, xij_array, df, linkage_matrix
 
-
-    ############################################################################################################
 
 
     def plot_PWES(self, threshold, n_simulations=5000):
@@ -217,7 +205,7 @@ class PWES_for_protein:
         map_to_pymol(self.pdb_location, dict_of_clusters, len(dict_of_clusters), self.output_dir, self.protein_name)
         
         return None
-    
+
     
     
     def plot_elbow(self):
@@ -234,7 +222,7 @@ class PWES_for_protein:
         thresholds = list(np.linspace(4, 30, 3))
         for threshold in thresholds:
             
-            self.plot_PWES(threshold)
+            self.plot_PWES(threshold, n_simulations)
             
         
         with open(f"{self.output_dir}/scores.json", "w") as f:
@@ -247,3 +235,5 @@ class PWES_for_protein:
         
         return None
 
+
+# %%
