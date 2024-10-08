@@ -9,7 +9,7 @@ import scipy.cluster.hierarchy as sch
 
 
 
-def plot_PWES_fn(tiling_df, PWES_array, protein_name, linkage_matrix, dict_of_scores, output_directory, suffix, threshold, n_simulations):
+def plot_PWES_fn(tiling_df, PWES_array, protein_name, linkage_matrix, dict_of_scores, output_directory, suffix, threshold, n_simulations, simulate=False, dendogram=False):
     
 
     """
@@ -73,12 +73,13 @@ def plot_PWES_fn(tiling_df, PWES_array, protein_name, linkage_matrix, dict_of_sc
     # plot Dendrogram with threshold
     
     # Plot the dendrogram
-    plt.figure(figsize=(10, 5))
-    dendrogram = sch.dendrogram(linkage_matrix, color_threshold=threshold)
-    # plot the threshold
-    plt.axhline(y=threshold, color='r', linestyle='--')
-    plt.savefig(os.path.join(output_directory,f"{protein_name}_dendrogram_{n_clusters}.pdf"))
-    plt.close()
+    if dendogram:
+        plt.figure(figsize=(10, 5))
+        sch.dendrogram(linkage_matrix, color_threshold=threshold)
+        # plot the threshold
+        plt.axhline(y=threshold, color='r', linestyle='--')
+        plt.savefig(os.path.join(output_directory,f"{protein_name}_dendrogram_{n_clusters}.pdf"))
+        plt.close()
     
     
     
@@ -190,8 +191,10 @@ def plot_PWES_fn(tiling_df, PWES_array, protein_name, linkage_matrix, dict_of_sc
     plt.savefig(os.path.join(output_directory,f"{protein_name}_boxplot_{n_clusters}.pdf"), bbox_inches="tight")
     plt.close()
     
-    pvalues = simulate_pwes(clusters, PWES_array, threshold, protein_name, output_directory, PWES_array, PWES_array, suffix, n_simulations)
-    
+    if simulate:
+        pvalues = simulate_pwes(clusters, PWES_array, threshold, protein_name, output_directory, PWES_array, PWES_array, suffix, n_simulations)
+    else:
+        pvalues = None
     return dict_of_clusters, wcss, pvalues
 
 

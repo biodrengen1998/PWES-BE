@@ -8,8 +8,8 @@ import pandas as pd
 #display all columns
 pd.set_option('display.max_columns', None)
 
-from Bio.PDB import PDBParser
-p = PDBParser(QUIET=True)
+from Bio.PDB import PDBParser, MMCIFParser
+
 
 import shutil
 
@@ -75,9 +75,15 @@ class PWES_for_protein:
 
 
     def get_structure(self):
-        
-        p = PDBParser(QUIET=True)
-        structure = p.get_structure(self.protein_name, self.pdb_location)
+        try:
+            try:
+                p = PDBParser(QUIET=True)
+                structure = p.get_structure(self.protein_name, self.pdb_location)
+            except:
+                p = MMCIFParser(QUIET=True)
+                structure = p.get_structure(self.protein_name, self.pdb_location)
+        except:
+            raise Exception("PDB file not found")
         # copy structure to f"figures/{self.protein_name}/{self.treatment}/{self.pdb_name}/"
         #shutil.copy(f"{self.pdb_path}/{self.pdb_name}.pdb", f"figures/{self.protein_name1}_{self.protein_name2}/{self.treatment}/{self.pdb_name}/")
         return structure
@@ -194,10 +200,10 @@ class PWES_for_protein:
 
 
 
-    def plot_PWES(self, threshold, n_simulations=5000):
+    def plot_PWES(self, threshold, simulate=False, dendrogram=False, n_simulations=5000):
         
         try:
-            dict_of_clusters, wcss, pvalues = plot_PWES_fn(self.df, self.PWES_array, self.protein_name, self.linkage_matrix, self.dict_of_scores, self.output_dir, self.suffix, threshold, n_simulations)
+            dict_of_clusters, wcss, pvalues = plot_PWES_fn(self.df, self.PWES_array, self.protein_name, self.linkage_matrix, self.dict_of_scores, self.output_dir, self.suffix, threshold, n_simulations, simulate, dendrogram)
         except TypeError:
             return None
         self.dict_of_scores[len(dict_of_clusters)] = {"clusters": dict_of_clusters, "wcss": wcss, "pvalues": pvalues}
@@ -213,16 +219,16 @@ class PWES_for_protein:
     
 
 
-    def perform_for_all_thresholds(self, n_simulations=5000):
+    def perform_for_all_thresholds(self, simulate, dendrogram, threshold_step_size=0.2, threshold_range=(2,70), n_simulations=5000):
         
         if os.path.exists(f"figures/{self.protein_name}/{self.suffix}/{self.pdb_name}/WCSS_vs_Clusters.pdf"):
             print(f"Already performed for {self.protein_name} {self.suffix} {self.pdb_name}")
             return None
         
-        thresholds = list(np.linspace(4, 30, 3))
+        thresholds = list(range(0,int(threshold_range[1]*(1/threshold_step_size))-int(threshold_range[0]/threshold_step_size)+1, 1))
         for threshold in thresholds:
-            
-            self.plot_PWES(threshold, n_simulations)
+            threshold = threshold*threshold_step_size + threshold_range[0]
+            self.plot_PWES(threshold, simulate, dendrogram, n_simulations)
             
         
         with open(f"{self.output_dir}/scores.json", "w") as f:
