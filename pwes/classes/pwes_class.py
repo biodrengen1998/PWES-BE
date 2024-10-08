@@ -127,16 +127,16 @@ class PWES_for_protein:
             
             # add to collection_df
             collection_df.append(df_chain)
-            print(df_chain.shape)
+
             
         df = pd.concat(collection_df, ignore_index=True)
-        print(df.shape)
+
         
         df = df.reset_index(drop=True)
         df["guide_idx"] = df.index
         
         num_rows = df.shape[0]
-        #print(num_rows)
+
         xij_array = np.zeros((num_rows, num_rows))
         dij_array = np.zeros((num_rows, num_rows))
         PWES_array = np.zeros((num_rows, num_rows))
@@ -192,7 +192,6 @@ class PWES_for_protein:
                 PWES_array[i, j] = pwij
         np.fill_diagonal(PWES_array, 0)
         
-        print(dij_array.shape, xij_array.shape, PWES_array.shape, df.shape)
 
         linkage_matrix = sch.linkage(PWES_array, method="ward", metric="euclidean")
         
@@ -236,8 +235,8 @@ class PWES_for_protein:
         
         
         ##### plotting 
-        
-        self.plot_elbow(self.dict_of_scores, self.output_dir, self.protein_name, self.suffix)
+        if simulate:
+            self.plot_elbow()
         
         return None
 
