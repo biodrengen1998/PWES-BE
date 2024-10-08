@@ -45,6 +45,8 @@ class PWES_for_protein:
             self.df = self.get_df()
         
         protein_names = self.df["gene"].unique()
+        #sort protein names
+        protein_names = sorted(protein_names)
         self.protein_name = "_".join(protein_names)
         
         
@@ -62,7 +64,7 @@ class PWES_for_protein:
             raise Exception("PDB file not found")
         
         
-        self.output_dir = os.path.join(output_dir, self.protein_name, self.suffix)
+        self.output_dir = os.path.join(output_dir, self.protein_name, self.pdb_name, self.suffix)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         
