@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pwes',
-    version='0.1.1',
+    version='0.1.4',
     description='A brief description of your package',
     packages=find_packages(),
     install_requires=[

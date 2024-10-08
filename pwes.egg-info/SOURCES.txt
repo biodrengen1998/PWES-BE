@@ -1,8 +1,5 @@
 LICENSE
 setup.py
-classes/__init__.py
-classes/pwes_class.py
-classes/pwes_class_old.py
 mapping/__init__.py
 mapping/map_to_pymol.py
 plotting/__init__.py

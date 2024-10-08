@@ -18,8 +18,8 @@ from scipy.spatial.distance import euclidean
 import scipy.cluster.hierarchy as sch
 
 
-from pwes.plotting.plotting import plot_PWES_fn, plot_elbow_fn
-from pwes.mapping.map_to_pymol import map_to_pymol
+from pwes_dir.plotting.plotting import plot_PWES_fn, plot_elbow_fn
+from pwes_dir.mapping.map_to_pymol import map_to_pymol
 
 
 class PWES_for_protein:
