@@ -237,8 +237,8 @@ class PWES_for_protein:
         
         
         ##### plotting 
-        if simulate:
-            self.plot_elbow()
+
+        self.plot_elbow()
         
         return None
 
