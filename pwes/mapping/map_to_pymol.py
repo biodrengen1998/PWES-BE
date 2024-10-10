@@ -1,6 +1,7 @@
 import os
 try:
     import pymol2
+    pymol = True
 except:
     pymol = None
 
