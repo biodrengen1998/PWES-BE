@@ -39,3 +39,6 @@ PyPi installation
 ```
 pip install pwes
 ```
+
+![Clustermap](img/Clustermap.png)
+![Violinplot](img/Violinplot.png)
