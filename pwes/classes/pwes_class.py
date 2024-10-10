@@ -26,7 +26,7 @@ class PWES_for_protein:
     def __init__(self, pdb_name, pdb_path, data_path, output_dir="./figures", output_suffix = '', data_sep = ",", input_df=None):
                 # define attributes relating to naming and pdb file
         self.pdb_name = pdb_name
-        self.pdb_path = pdb_path      
+        self.pdb_location = pdb_path      
         
         self.suffix = output_suffix
         
@@ -53,12 +53,9 @@ class PWES_for_protein:
         # except:
         #     raise Exception("PDB file not found")
         
-        if not self.pdb_path[-4:] == ".pdb":
-            self.pdb_location = f"{self.pdb_path}/{self.pdb_name}.pdb"
-        else:
-            self.pdb_location = self.pdb_path
+        
+
         try:
-            print(self.pdb_location)
             self.structure = self.get_structure()
         except:
             raise Exception("PDB file not found")
@@ -78,10 +75,10 @@ class PWES_for_protein:
 
     def get_structure(self):
         try:
-            try:
+            if self.pdb_location.endswith(".pdb"):
                 p = PDBParser(QUIET=True)
                 structure = p.get_structure(self.protein_name, self.pdb_location)
-            except:
+            if self.pdb_location.endswith(".cif"):
                 p = MMCIFParser(QUIET=True)
                 structure = p.get_structure(self.protein_name, self.pdb_location)
         except:
